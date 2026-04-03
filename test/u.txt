@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Heart Disease Prediction</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: linear-gradient(135deg, #f7f8fa, #e3f2fd);
+        display: flex;
+        justify-content: center;
+        padding: 50px;
+    }
+
+    .container {
+        background: #fff;
+        padding: 30px 40px;
+        border-radius: 16px;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        width: 420px;
+        transition: all 0.3s ease;
+    }
+
+    .container:hover {
+        box-shadow: 0 12px 25px rgba(0,0,0,0.15);
+    }
+
+    h2 {
+        text-align: center;
+        margin-bottom: 25px;
+        color: #333;
+        font-size: 24px;
+    }
+
+    label {
+        font-weight: bold;
+        display: block;
+        margin-top: 12px;
+        color: #555;
+    }
+
+    input {
+        width: 100%;
+        padding: 10px 12px;
+        margin-top: 5px;
+        border-radius: 8px;
+        border: 1px solid #ccc;
+        transition: border 0.2s;
+    }
+
+    input:focus {
+        border-color: #007bff;
+        outline: none;
+    }
+
+    button {
+        width: 100%;
+        padding: 12px;
+        margin-top: 22px;
+        background-color: #007bff;
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        font-size: 17px;
+        font-weight: bold;
+        transition: background 0.2s;
+    }
+
+    button:hover {
+        background-color: #0056b3;
+    }
+
+    .result {
+        margin-top: 25px;
+        padding: 18px;
+        border-radius: 12px;
+        background-color: #f1f1f1;
+        min-height: 80px;
+        transition: all 0.3s ease;
+    }
+
+    .prediction-yes {
+        color: #d32f2f; /* red */
+        font-weight: bold;
+        font-size: 18px;
+    }
+
+    .prediction-no {
+        color: #388e3c; /* green */
+        font-weight: bold;
+        font-size: 18px;
+    }
+
+    .probability-bar {
+        height: 18px;
+        background-color: #007bff;
+        border-radius: 8px;
+        margin-top: 8px;
+        transition: width 0.5s ease;
+    }
+
+    pre {
+        background-color: #e8f0fe;
+        padding: 10px;
+        border-radius: 8px;
+        overflow-x: auto;
+    }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Heart Disease Prediction</h2>
+    <form id="predictionForm">
+        <label>Age</label>
+        <input type="number" id="age" required>
+
+        <label>Sex (0=Female, 1=Male)</label>
+        <input type="number" id="sex" min="0" max="1" required>
+
+        <label>Resting BP</label>
+        <input type="number" id="resting_bp" required>
+
+        <label>Max Heart Rate</label>
+        <input type="number" id="max_heart_rate" required>
+
+        <label>Chest Pain Type (0-3)</label>
+        <input type="number" id="chest_pain_type" min="0" max="3" required>
+
+        <label>Resting ECG (0-2)</label>
+        <input type="number" id="resting_ecg" min="0" max="2" required>
+
+        <label>ST Depression</label>
+        <input type="number" step="0.1" id="st_depression" required>
+
+        <label>ST Slope (1-3)</label>
+        <input type="number" min="1" max="3" id="st_slope" required>
+
+        <label>Exercise Angina (0=No, 1=Yes)</label>
+        <input type="number" min="0" max="1" id="exercise_angina" required>
+
+        <label>Number of Major Vessels (0-3)</label>
+        <input type="number" min="0" max="3" id="num_major_vessels" required>
+
+        <label>Thalassemia (1-3)</label>
+        <input type="number" min="1" max="3" id="thalassemia" required>
+
+        <button type="submit">Predict</button>
+    </form>
+
+    <div class="result" id="result"></div>
+</div>
+
+<script>
+document.getElementById('predictionForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const data = {
+        age: parseFloat(document.getElementById('age').value),
+        sex: parseInt(document.getElementById('sex').value),
+        resting_bp: parseFloat(document.getElementById('resting_bp').value),
+        max_heart_rate: parseFloat(document.getElementById('max_heart_rate').value),
+        chest_pain_type: parseInt(document.getElementById('chest_pain_type').value),
+        resting_ecg: parseInt(document.getElementById('resting_ecg').value),
+        st_depression: parseFloat(document.getElementById('st_depression').value),
+        st_slope: parseInt(document.getElementById('st_slope').value),
+        exercise_angina: parseInt(document.getElementById('exercise_angina').value),
+        num_major_vessels: parseInt(document.getElementById('num_major_vessels').value),
+        thalassemia: parseInt(document.getElementById('thalassemia').value)
+    };
+
+    const resultDiv = document.getElementById('result');
+    resultDiv.innerHTML = "⏳ Predicting...";
+
+    try {
+        const response = await fetch('http://localhost:8000/predict', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        if (!response.ok) {
+            throw new Error(`Server error: ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        // Color for prediction
+        const predClass = result.prediction === "YES" ? "prediction-yes" : "prediction-no";
+
+        // Probability bar width
+        const probPercent = Math.round(result.probability * 100);
+
+        resultDiv.innerHTML = `
+            <strong>Prediction:</strong> <span class="${predClass}">${result.prediction}</span><br>
+            <strong>Probability:</strong> ${result.probability.toFixed(3)}
+            <div class="probability-bar" style="width: ${probPercent}%;"></div>
+            <strong>Normalized Data:</strong>
+            <pre>${JSON.stringify(result.normalized_data, null, 2)}</pre>
+        `;
+    } catch (err) {
+        resultDiv.innerHTML = `❌ Error: ${err.message}`;
+    }
+});
+</script>
+
+</body>
+</html>
